@@ -1,6 +1,6 @@
 [submodule "server"]
 	path = server
-	url = ./server
+	url = git@github.com:mehedisarkar2k/task-flow-server.git
 [submodule "web-app"]
 	path = web-app
-	url = ./web-app
+	url = git@github.com:mehedisarkar2k/task-flow-web-app.git
