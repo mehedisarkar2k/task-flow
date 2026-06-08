@@ -1,0 +1,11 @@
+# Whitelist approach: ignore everything in the repo root by default,
+# then explicitly allow only the files the parent repo should track.
+# Any other root-level file/folder (helper docs, screens/, etc.) stays local.
+/*
+
+# Allow only these:
+!/.gitignore
+!/.gitmodules
+!/README.md
+!/server
+!/web-app
