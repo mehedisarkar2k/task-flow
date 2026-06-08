@@ -1,0 +1,6 @@
+[submodule "server"]
+	path = server
+	url = ./server
+[submodule "web-app"]
+	path = web-app
+	url = ./web-app
