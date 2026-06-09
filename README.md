@@ -37,11 +37,6 @@ single source of truth (the API contract, the schema, the system design).
 task-flow/                  # ← this repo (docs + submodule pointers)
 ├── web-app/                # submodule → Next.js frontend
 ├── server/                 # submodule → Express + Prisma backend
-├── API_SPEC.md             # the REST contract (§1–13) both sides follow
-├── ERD.md                  # database schema (Mermaid)
-├── SYSTEM_DESIGN.md        # end-to-end architecture
-├── BACKEND_PLAN.md         # backend build plan / module breakdown
-├── CHATBOT_PLAN.md         # assistant design & security model
 └── screens/                # reference UI designs
 ```
 
@@ -61,13 +56,13 @@ git submodule update --init --recursive
 
 ## Tech stack
 
-| Layer | Choices |
-|---|---|
+| Layer        | Choices                                                                                                                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Frontend** | Next.js 16 (App Router, React 19), TypeScript, Tailwind CSS v4, shadcn / Radix / Base UI, TanStack Query, Zustand, `@hello-pangea/dnd` (Kanban drag), TipTap (rich comments + @mentions), Recharts, Better Auth client, Axios |
-| **Backend** | Bun runtime, Express 5, Prisma 7 (PostgreSQL via `@prisma/adapter-pg`), Better Auth, Zod v4, Helmet + CORS, OpenAI SDK (Azure mode), AWS S3 SDK (R2) |
-| **Auth** | Better Auth (email/password, session cookies) shared between client and server |
-| **AI** | Azure OpenAI (function-calling) for the assistant |
-| **Deploy** | Server targets Vercel serverless; web-app on Next.js/Vercel |
+| **Backend**  | Bun runtime, Express 5, Prisma 7 (PostgreSQL via `@prisma/adapter-pg`), Better Auth, Zod v4, Helmet + CORS, OpenAI SDK (Azure mode), AWS S3 SDK (R2)                                                                          |
+| **Auth**     | Better Auth (email/password, session cookies) shared between client and server                                                                                                                                                |
+| **AI**       | Azure OpenAI (function-calling) for the assistant                                                                                                                                                                             |
+| **Deploy**   | Server targets Vercel serverless; web-app on Next.js/Vercel                                                                                                                                                                   |
 
 ---
 
@@ -112,6 +107,7 @@ MEMBER sees what they're assigned/member of.
 Soft deletes (`deleted_at`) on Project and Task; comment edit history via `CommentVersion`.
 
 Two Express-5 / Better-Auth gotchas baked into the code:
+
 1. `req.query` is getter-only in Express 5 — the `validate` middleware redefines it via
    `Object.defineProperty`.
 2. Better-Auth user IDs are **not** UUIDs — they're validated as `z.string().min(1).max(64)`;
@@ -168,6 +164,7 @@ Log in via Better Auth (`POST /api/auth/sign-in/email`). Seed volume: 5 projects
 Each feature is a full vertical slice (backend module + wired frontend screen).
 
 ### 🔐 Authentication & profile
+
 - **Email/password auth** via Better Auth — login, signup (always creates a `MEMBER`),
   session cookies, password-reset scaffolding.
 - **Profile** — name, avatar (crop/upload), theme (light/dark/system), and an editable
@@ -175,6 +172,7 @@ Each feature is a full vertical slice (backend module + wired frontend screen).
   powers the Team Directory.
 
 ### 📁 Projects
+
 - Create / edit / delete (soft-delete) projects with name, description, status
   (`ACTIVE` / `COMPLETED` / `ON_HOLD`) and optional deadline.
 - **Project members** with a per-project role (`LEAD` / `MEMBER`); the creator is auto-added
@@ -182,12 +180,14 @@ Each feature is a full vertical slice (backend module + wired frontend screen).
 - Projects list + a rich **Project Details** page with derived progress.
 
 ### 🗂️ Kanban board
+
 - Each project gets **user-defined columns** (auto-seeded with Todo / In Progress / Completed).
 - **Drag tasks** between columns (optimistic `PATCH move`), reorder columns, add/rename columns.
 - A column may carry a `mapped_status`: dropping a task into it updates the task's analytics
   status (and `completed_at`) automatically — board position is presentation, `status` is truth.
 
 ### ✅ Tasks
+
 - Tasks always belong to a project; have title, description, priority (`HIGH`/`MEDIUM`/`LOW`),
   status (`TODO`/`IN_PROGRESS`/`COMPLETED`), due date, optional estimate.
 - **Multiple assignees** per task (assignees must be project members).
@@ -196,11 +196,13 @@ Each feature is a full vertical slice (backend module + wired frontend screen).
 - Per-project **unique task titles** (partial unique index, ignores soft-deleted).
 
 ### 💬 Comments
+
 - Threaded, **rich-text** comments on tasks (TipTap) with **@mentions**.
 - Editable with full history — each edit snapshots the prior body into `CommentVersion` and
   flips `is_edited`. Mentions and new comments emit notifications + activity.
 
 ### 🔔 Notifications
+
 - Per-user feed with **all / unread / archived** tabs, unread-count badge, mark-read,
   mark-all-read, archive.
 - Typed events (task assigned/unassigned/status/overdue/due-soon, comment added/mention,
@@ -208,24 +210,29 @@ Each feature is a full vertical slice (backend module + wired frontend screen).
   `sendNotifications()` emitter dedupes and excludes the actor.
 
 ### 📊 Dashboard
+
 - Role-scoped KPIs: project/task counts, tasks by status & priority, member workload,
   upcoming deadlines, per-project progress.
 - Charts (Recharts), recent-activity feed, upcoming-deadline list, workload meter
   (`pending/10` capacity; overloaded ≥ 90%).
 
 ### 👥 Team & users
+
 - **Team Directory** + **Member Details** (real tasks, skills, workload).
 - **Admin user management** — list users, change a user's global role (`MEMBER`/`PM`/`ADMIN`,
   admin-only, can't change your own), user search. Role elevation is admin-only by design.
 
 ### 📈 Activity log
+
 - Audit trail of system actions for the recent-activity feed, optionally project-scoped.
   Written via a best-effort `logActivity()` helper that never throws.
 
 ### 🔎 Search
+
 - Role-scoped search across tasks and projects (`/api/search`).
 
 ### 🤖 AI Assistant
+
 - A floating chat that answers over your real data **and can take actions** — see below.
 
 > **Not yet built:** §7 attachments (schema + R2 wiring designed, UI deferred).
@@ -259,7 +266,7 @@ only permitted rows returned → LLM phrases the answer → user
 Because the boundary lives in the **data layer** (`buildProjectScopeWhere` /
 `buildTaskScopeWhere`), a MEMBER asking "show all projects in the system" structurally cannot
 get more than their own rows — the model has no knowledge of the DB, schema, or other users to
-leak. This is a *tool-calling agent over a whitelist*, not RAG.
+leak. This is a _tool-calling agent over a whitelist_, not RAG.
 
 ### The chat loop
 
@@ -271,25 +278,25 @@ leak. This is a *tool-calling agent over a whitelist*, not RAG.
    send messages + tool defs → model returns `tool_calls` → run them server-side (role-scoped)
    → append results → call again → final natural-language answer.
 3. The reply can include **clickable action chips** — markdown links with an `#action` URL the
-   widget renders as buttons (e.g. multi-step *create task* / *assign* / *login* wizards).
+   widget renders as buttons (e.g. multi-step _create task_ / _assign_ / _login_ wizards).
 
 ### Tools & role gating
 
 Authorization is enforced at two layers: **(a)** which tools are exposed for the role, and
 **(b)** the scope-where inside each tool (the real boundary — defense in depth).
 
-| Tool | Purpose | Roles |
-|---|---|---|
-| `get_my_progress` | completed / pending / overdue counts + % | all |
-| `get_my_tasks(status?)` | the caller's tasks | all |
-| `get_my_notifications` | the caller's notifications | all |
-| `get_dashboard_stats` | role-scoped KPIs, status/priority, deadlines, workload | all (workload stripped for MEMBER) |
-| `search_users(name?, role?)` | look up users / pick a PM or LEAD | all |
-| `update_task_status(...)` | move / mark a task (action) | all |
-| `get_team_tasks(status?, userId?)` | tasks across the team's projects | PM / ADMIN |
-| `create_project(...)` | create a project (action) | PM / ADMIN |
-| `create_task(...)` | create a task (action) | PM / ADMIN |
-| `assign_task(...)` | assign / unassign a task (action) | PM / ADMIN |
+| Tool                               | Purpose                                                | Roles                              |
+| ---------------------------------- | ------------------------------------------------------ | ---------------------------------- |
+| `get_my_progress`                  | completed / pending / overdue counts + %               | all                                |
+| `get_my_tasks(status?)`            | the caller's tasks                                     | all                                |
+| `get_my_notifications`             | the caller's notifications                             | all                                |
+| `get_dashboard_stats`              | role-scoped KPIs, status/priority, deadlines, workload | all (workload stripped for MEMBER) |
+| `search_users(name?, role?)`       | look up users / pick a PM or LEAD                      | all                                |
+| `update_task_status(...)`          | move / mark a task (action)                            | all                                |
+| `get_team_tasks(status?, userId?)` | tasks across the team's projects                       | PM / ADMIN                         |
+| `create_project(...)`              | create a project (action)                              | PM / ADMIN                         |
+| `create_task(...)`                 | create a task (action)                                 | PM / ADMIN                         |
+| `assign_task(...)`                 | assign / unassign a task (action)                      | PM / ADMIN                         |
 
 ### Guardrails (layered)
 
@@ -468,15 +475,15 @@ erDiagram
 
 ## Project documentation
 
-| Doc | What's in it |
-|---|---|
-| [`API_SPEC.md`](API_SPEC.md) | The REST contract (§1–13) both client and server follow |
-| [`ERD.md`](ERD.md) | Database schema, constraints, enums, Prisma layout |
-| [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) | End-to-end architecture |
-| [`BACKEND_PLAN.md`](BACKEND_PLAN.md) | Backend build plan & module breakdown |
-| [`CHATBOT_PLAN.md`](CHATBOT_PLAN.md) | Assistant design & security model |
-| [`REQUREMENTS.md`](REQUREMENTS.md) | Product requirements |
-| [`design.md`](design.md) / [`components.md`](components.md) | UI / component reference |
+| Doc                                                         | What's in it                                            |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| [`API_SPEC.md`](API_SPEC.md)                                | The REST contract (§1–13) both client and server follow |
+| [`ERD.md`](ERD.md)                                          | Database schema, constraints, enums, Prisma layout      |
+| [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md)                      | End-to-end architecture                                 |
+| [`BACKEND_PLAN.md`](BACKEND_PLAN.md)                        | Backend build plan & module breakdown                   |
+| [`CHATBOT_PLAN.md`](CHATBOT_PLAN.md)                        | Assistant design & security model                       |
+| [`REQUREMENTS.md`](REQUREMENTS.md)                          | Product requirements                                    |
+| [`design.md`](design.md) / [`components.md`](components.md) | UI / component reference                                |
 
 ---
 
